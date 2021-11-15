@@ -4,11 +4,14 @@ using System.Text;
 using System.Net.NetworkInformation;
 using System.Net;
 using System.Net.Sockets;
+using System.Diagnostics;
+using System.IO;
 
 namespace PingSweep
 {
     public class MainClass
     {
+        public string portRange, portScanType;
         private bool ping(string ipAddress)
         {
             Ping PingObj = new Ping();
@@ -26,11 +29,6 @@ namespace PingSweep
 
             if ((Reply.Status == IPStatus.Success) && (IPAddress.Parse(ipAddress).AddressFamily == AddressFamily.InterNetwork))
             {
-                //Console.WriteLine("Address: {0}", Reply.Address.ToString());
-                //Console.WriteLine("RoundTrip time: {0}", Reply.RoundtripTime);
-                //Console.WriteLine("Time to live: {0}", Reply.Options.Ttl);
-                //Console.WriteLine("Don't fragment: {0}", Reply.Options.DontFragment);
-                //Console.WriteLine("Buffer size: {0}", Reply.Buffer.Length);
                 return true;
             }
 
@@ -45,7 +43,7 @@ namespace PingSweep
                 IPHostEntry hostEntry = Dns.GetHostEntry(ipAddress);
                 machineName = hostEntry.HostName;
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 return "Not Available";
             }
@@ -101,7 +99,7 @@ namespace PingSweep
 
                 return true;
             }
-            catch (Exception Ex)
+            catch (Exception)
             {
                 return false;
             }
@@ -169,8 +167,11 @@ namespace PingSweep
                             System.Console.WriteLine("{0}", ip);
                             if (ping(ip))
                             {
+                                Console.WriteLine("machine reachable {0}", ip);
+                                Console.WriteLine("fetching machine info");
                                 GetMachineNameFromIPAddress(ip);
                                 GetMacAddress(ip);
+                                PortScan(ip, portRange, portScanType);
                             }
                             else
                             {
@@ -226,10 +227,55 @@ namespace PingSweep
                 Console.WriteLine(Ex.Message);
             }
         }
+
+        public void PortScan(string ip, string portRange, string scantechnique)
+        {
+            string pythonScriptDir = "\"E:\\projects\\Subnet Scanner\\PortScanner.py\"";
+            string args = pythonScriptDir + " " + ip + " " + portRange + " " + scantechnique;
+            string pythonExePath = "C:\\Users\\ashwin-8919\\AppData\\Local\\Programs\\Python\\Python38\\python.exe";
+            ProcessStartInfo start = new ProcessStartInfo();
+            start.FileName = pythonExePath;
+            start.Arguments = args;
+            start.UseShellExecute = false;
+            start.RedirectStandardOutput = true;
+            using (Process process = Process.Start(start))
+            {
+                using (StreamReader reader = process.StandardOutput)
+                {
+                    string result = reader.ReadToEnd();
+                    Console.Write(result);
+                }
+            }
+
+        }
+        public bool setPortScanParams()
+        {
+            try
+            {
+
+                Console.WriteLine("Port scanner range(ex- 1-100, 15-1000, etc)");
+                string[] scantype = { "connect", "half", "fin", "xmas", "null" };
+                portRange = Convert.ToString(Console.ReadLine());
+                Console.WriteLine("Port scanner type(half, connect, fin, xmas, null)");
+                portScanType = (Convert.ToString(Console.ReadLine())).ToLower();
+                if(!scantype.Contains(portScanType))
+                {
+                    return false;
+                }
+
+                return true;
+            }
+            catch(Exception)
+            {
+                return false;
+            }
+        }
+
         static void Main(string[] args)
         {
             try
             {
+                MainClass Main = new MainClass();
                 int choice;
                 Console.WriteLine("IP SCANNER");
                 Console.WriteLine("1. subnet scan");
@@ -237,7 +283,11 @@ namespace PingSweep
                 Console.WriteLine("Enter the choice");
 
                 choice = int.Parse(Console.ReadLine());
-                MainClass Main = new MainClass();
+                if( !Main.setPortScanParams())
+                {
+                    Console.ReadKey();
+                    return;
+                }
                 if (choice == 1)
                 {
                     string ipAddress;
